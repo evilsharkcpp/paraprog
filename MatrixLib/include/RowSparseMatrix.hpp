@@ -18,6 +18,8 @@ namespace Paraprog::MatrixLib
 
         RowSparseMatrix operator+(const RowSparseMatrix &right) const;
 
+        RowSparseMatrix operator*(const RowSparseMatrix &right) const;
+
         RowSparseMatrix operator-(const RowSparseMatrix &right) const;
 
         RowSparseMatrix operator*(const double value) const;
@@ -26,18 +28,26 @@ namespace Paraprog::MatrixLib
 
         static RowSparseMatrix ConvertMatrix(const std::initializer_list<std::initializer_list<double>> &matrix);
 
-    private:
         void LoadProfile(const std::vector<double> &values,
                          const std::vector<size_t> &colIndexes,
                          const std::vector<size_t> &rowIndexes);
+
+        void LoadProfile(const std::vector<double> &&values,
+                         const std::vector<size_t> &&colIndexes,
+                         const std::vector<size_t> &&rowIndexes);
 
         void GetProfile(std::vector<double> &values,
                         std::vector<size_t> &colIndexes,
                         std::vector<size_t> &rowIndexes) const;
 
+        std::tuple<const std::vector<double> &, const std::vector<size_t> &, const std::vector<size_t> &> GetProfile() const;
+
+    private:
         std::vector<double> m_values;
         std::vector<size_t> m_colIndexes;
         std::vector<size_t> m_rowIndexes;
     };
+
+    using RowSparseMatrixPtr = std::shared_ptr<RowSparseMatrix>;
 
 } // namespace Paraprog::MatrixLib

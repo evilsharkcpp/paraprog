@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <utility>
+#include <iostream>
 
 namespace Paraprog::MatrixLib
 {
@@ -66,6 +67,39 @@ namespace Paraprog::MatrixLib
         return result;
     }
 
+    RowSparseMatrix RowSparseMatrix::operator*(const RowSparseMatrix &right) const
+    {
+        RowSparseMatrix result(m_rowSize, right.m_colSize);
+        result.m_rowIndexes.push_back(0);
+        for (size_t i = 0; i < m_rowSize; i++)
+        {
+            size_t nonZeroElementsCount = 0;
+            for (size_t j = 0; j < right.m_colSize; j++)
+            {
+                double value = 0;
+                for (size_t k = m_rowIndexes[i]; k < m_rowIndexes[i + 1]; k++)
+                {
+                    for (size_t l = right.m_rowIndexes[m_colIndexes[k]]; l < right.m_rowIndexes[m_colIndexes[k] + 1]; l++)
+                    {
+                        if (right.m_colIndexes[l] == j)
+                        {
+                            value += m_values[k] * right.m_values[l];
+                        }
+                    }
+                }
+                if (std::abs(value) < std::numeric_limits<decltype(value)>::epsilon())
+                {
+                    continue;
+                }
+                nonZeroElementsCount++;
+                result.m_values.push_back(value);
+                result.m_colIndexes.push_back(j);
+            }
+            result.m_rowIndexes.push_back(result.m_rowIndexes[i] + nonZeroElementsCount);
+        }
+        return result;
+    }
+
     RowSparseMatrix RowSparseMatrix::operator-(const RowSparseMatrix &right) const
     {
         if (m_colSize != right.GetColSize() || m_rowSize != right.GetRowSize())
@@ -115,10 +149,24 @@ namespace Paraprog::MatrixLib
 
     void RowSparseMatrix::LoadProfile(const std::vector<double> &values, const std::vector<size_t> &colIndexes, const std::vector<size_t> &rowIndexes)
     {
-        if (rowIndexes.size() != m_rowSize + 1 || *std::max_element(colIndexes.begin(), colIndexes.end()) >= m_colSize || values.size() != rowIndexes.back())
+        // if (rowIndexes.size() != m_rowSize + 1 || *std::max_element(colIndexes.begin(), colIndexes.end()) >= m_colSize || values.size() != rowIndexes.back())
+        //{
+        //     throw std::logic_error("Incorrect profile for matrix");
+        // }
+        m_values = values;
+        m_colIndexes = colIndexes;
+        m_rowIndexes = rowIndexes;
+    }
+
+    void RowSparseMatrix::LoadProfile(const std::vector<double> &&values, const std::vector<size_t> &&colIndexes, const std::vector<size_t> &&rowIndexes)
+    {
+        /*if (rowIndexes.size() != m_rowSize + 1 || *std::max_element(colIndexes.begin(), colIndexes.end()) >= m_colSize || values.size() != rowIndexes.back())
         {
+            std::cout << "Values size: " << values.size() << std::endl;
+            std::cout << "Row size: " << rowIndexes.size() << std::endl;
+            std::cout << "Col size: " << colIndexes.size() << std::endl;
             throw std::logic_error("Incorrect profile for matrix");
-        }
+        }*/
         m_values = values;
         m_colIndexes = colIndexes;
         m_rowIndexes = rowIndexes;
@@ -129,6 +177,11 @@ namespace Paraprog::MatrixLib
         values = std::vector<double>(m_values);
         colIndexes = std::vector<size_t>(m_colIndexes);
         rowIndexes = std::vector<size_t>(m_rowIndexes);
+    }
+
+    std::tuple<const std::vector<double> &, const std::vector<size_t> &, const std::vector<size_t> &> RowSparseMatrix::GetProfile() const
+    {
+        return std::tuple<const std::vector<double> &, const std::vector<size_t> &, const std::vector<size_t> &>(m_values, m_colIndexes, m_rowIndexes);
     }
 
     RowSparseMatrix RowSparseMatrix::ConvertMatrix(const Matrix &matrix)

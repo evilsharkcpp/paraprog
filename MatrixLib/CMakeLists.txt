@@ -4,13 +4,13 @@ set(HEADERS
     include/Matrix.hpp
     include/SparseMatrix.hpp
     include/RowSparseMatrix.hpp
-    include/PlotMatrix.hpp
+    include/MPITools.hpp
 )
 
 set(SOURCES
     src/Matrix.cpp
     src/RowSparseMatrix.cpp
-    src/PlotMatrix.cpp
+    src/MPITools.cpp
 )
 
 add_library(MatrixLib SHARED ${SOURCES} ${HEADERS})
