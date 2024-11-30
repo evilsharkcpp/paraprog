@@ -242,7 +242,7 @@ namespace Paraprog::MatrixLib
         size_t m, n;
         in >> m >> n;
         const auto matrix = std::make_shared<RowSparseMatrix>(m, n);
-        for (size_t i = 0; i + 1 < m; i++)
+        for (size_t i = 0; i < m + 1; i++)
         {
             size_t value = 0;
             in >> value;
@@ -271,7 +271,7 @@ namespace Paraprog::MatrixLib
             return;
         }
         out << m_rowSize << " " << m_colSize << std::endl;
-        for (size_t i = 0; i + 1 < m_rowSize; i++)
+        for (size_t i = 0; i < m_rowSize + 1; i++)
         {
             out << m_rowIndexes[i];
         }
