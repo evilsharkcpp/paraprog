@@ -28,13 +28,17 @@ namespace Paraprog::MatrixLib
 
         static RowSparseMatrix ConvertMatrix(const std::initializer_list<std::initializer_list<double>> &matrix);
 
+        static std::shared_ptr<RowSparseMatrix> LoadMatrix(const std::string &path);
+
+        void SaveMatrix(const std::string &path);
+
         void LoadProfile(const std::vector<double> &values,
                          const std::vector<size_t> &colIndexes,
                          const std::vector<size_t> &rowIndexes);
 
-        void LoadProfile(const std::vector<double> &&values,
-                         const std::vector<size_t> &&colIndexes,
-                         const std::vector<size_t> &&rowIndexes);
+        void LoadProfile(std::vector<double> &&values,
+                         std::vector<size_t> &&colIndexes,
+                         std::vector<size_t> &&rowIndexes);
 
         void GetProfile(std::vector<double> &values,
                         std::vector<size_t> &colIndexes,
