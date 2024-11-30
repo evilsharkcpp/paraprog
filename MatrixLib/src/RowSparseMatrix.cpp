@@ -5,6 +5,7 @@
 #include <limits>
 #include <utility>
 #include <iostream>
+#include <fstream>
 
 namespace Paraprog::MatrixLib
 {
@@ -149,24 +150,13 @@ namespace Paraprog::MatrixLib
 
     void RowSparseMatrix::LoadProfile(const std::vector<double> &values, const std::vector<size_t> &colIndexes, const std::vector<size_t> &rowIndexes)
     {
-        // if (rowIndexes.size() != m_rowSize + 1 || *std::max_element(colIndexes.begin(), colIndexes.end()) >= m_colSize || values.size() != rowIndexes.back())
-        //{
-        //     throw std::logic_error("Incorrect profile for matrix");
-        // }
         m_values = values;
         m_colIndexes = colIndexes;
         m_rowIndexes = rowIndexes;
     }
 
-    void RowSparseMatrix::LoadProfile(const std::vector<double> &&values, const std::vector<size_t> &&colIndexes, const std::vector<size_t> &&rowIndexes)
+    void RowSparseMatrix::LoadProfile(std::vector<double> &&values, std::vector<size_t> &&colIndexes, std::vector<size_t> &&rowIndexes)
     {
-        /*if (rowIndexes.size() != m_rowSize + 1 || *std::max_element(colIndexes.begin(), colIndexes.end()) >= m_colSize || values.size() != rowIndexes.back())
-        {
-            std::cout << "Values size: " << values.size() << std::endl;
-            std::cout << "Row size: " << rowIndexes.size() << std::endl;
-            std::cout << "Col size: " << colIndexes.size() << std::endl;
-            throw std::logic_error("Incorrect profile for matrix");
-        }*/
         m_values = values;
         m_colIndexes = colIndexes;
         m_rowIndexes = rowIndexes;
@@ -240,5 +230,60 @@ namespace Paraprog::MatrixLib
             result.m_rowIndexes.push_back(result.m_rowIndexes.at(i) + nonZeroElementsCount);
         }
         return result;
+    }
+
+    RowSparseMatrixPtr RowSparseMatrix::LoadMatrix(const std::string &path)
+    {
+        std::ifstream in(path);
+        if (!in.is_open())
+        {
+            return nullptr;
+        }
+        size_t m, n;
+        in >> m >> n;
+        const auto matrix = std::make_shared<RowSparseMatrix>(m, n);
+        for (size_t i = 0; i + 1 < m; i++)
+        {
+            size_t value = 0;
+            in >> value;
+            matrix->m_rowIndexes.push_back(value);
+        }
+        for (size_t i = 0; i < matrix->m_rowIndexes.back(); i++)
+        {
+            double value = 0.0;
+            in >> value;
+            matrix->m_values.push_back(value);
+        }
+        for (size_t i = 0; i < matrix->m_rowIndexes.back(); i++)
+        {
+            size_t value = 0;
+            in >> value;
+            matrix->m_colIndexes.push_back(value);
+        }
+        return matrix;
+    }
+
+    void RowSparseMatrix::SaveMatrix(const std::string &path)
+    {
+        std::ofstream out(path);
+        if (!out.is_open())
+        {
+            return;
+        }
+        out << m_rowSize << " " << m_colSize << std::endl;
+        for (size_t i = 0; i + 1 < m_rowSize; i++)
+        {
+            out << m_rowIndexes[i];
+        }
+        out << std::endl;
+        for (size_t i = 0; i < m_rowIndexes.back(); i++)
+        {
+            out << m_values[i];
+        }
+        out << std::endl;
+        for (size_t i = 0; i < m_rowIndexes.back(); i++)
+        {
+            out << m_colIndexes[i];
+        }
     }
 } // namespace Paraprog::MatrixLib
