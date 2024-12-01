@@ -23,7 +23,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install MPI
       run: |
-        sudo apt install mpich python3 pip
+        sudo apt install mpich libmpich-dev python3 pip
         pip install scipy
         pip install np
     - name: Configure CMake
