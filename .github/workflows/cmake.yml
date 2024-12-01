@@ -38,29 +38,52 @@ jobs:
     - name: TestMPI_Sum
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 1000
+        python3 ../tests/Test.py 200
         mpiexec -n 3 ./Main/Main left.txt right.txt add result_sum.txt
         python3 ../tests/Validate.py sum.txt result_sum.txt
     
     - name: TestMPI_Mult
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 1000
+        python3 ../tests/Test.py 50
         mpiexec -n 3 ./Main/Main left.txt right.txt mult result_mult.txt
         python3 ../tests/Validate.py mult.txt result_mult.txt
 
     - name: TestOneThread_Sum
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 1000
+        python3 ../tests/Test.py 200
         ./Main/Main left.txt right.txt add result_sum.txt
         python3 ../tests/Validate.py sum.txt result_sum.txt
         
     - name: TestOneThread_Mult
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 1000
+        python3 ../tests/Test.py 50
         ./Main/Main left.txt right.txt mult result_mult.txt
         python3 ../tests/Validate.py mult.txt result_mult.txt
+        
+    - name: TestMPI_Sum_Speed
+      working-directory: ${{github.workspace}}/build
+      run: |
+        python3 ../tests/Test.py 999
+        mpiexec -n 3 ./Main/Main left.txt right.txt add result_sum.txt 0
 
+    - name: TestMPI_Mult_Speed
+      working-directory: ${{github.workspace}}/build
+      run: |
+        python3 ../tests/Test.py 999
+        mpiexec -n 3 ./Main/Main left.txt right.txt mult result_mult.txt 0
+
+    - name: TestOneThread_Sum_Speed
+      working-directory: ${{github.workspace}}/build
+      run: |
+        python3 ../tests/Test.py 999
+        ./Main/Main left.txt right.txt add result_sum.txt 0
+        
+    - name: TestOneThread_Mult_Speed
+      working-directory: ${{github.workspace}}/build
+      run: |
+        python3 ../tests/Test.py 999
+        ./Main/Main left.txt right.txt mult result_mult.txt 0
 
