@@ -55,70 +55,83 @@ namespace Paraprog::MatrixLib
         int rank, size;
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        size_t maxCount;
+        size_t rowSize;
+        RowSparseMatrixPtr result = nullptr;
+        std::vector<double> values;
+        std::vector<size_t> rows;
+        std::vector<size_t> cols;
         if (rank == 0)
         {
             if (left->GetRowSize() != right->GetRowSize() || left->GetColSize() != right->GetColSize())
             {
                 return nullptr;
             }
-
-            const auto &[lvalues, lcol, lrow] = left->GetProfile();
-            const auto &[rvalues, rcol, rrow] = right->GetProfile();
-            size_t colSize = left->GetColSize();
-            for (size_t i = 0; i < left->GetRowSize(); i++)
-            {
-                size_t threadNum = i % (size - 1) + 1;
-                MPI_Send(&colSize, 1, MPI_UNSIGNED_LONG, threadNum, (i * size) >= left->GetRowSize(), MPI_COMM_WORLD);
-                const size_t lElementsInRow = lrow[i + 1] - lrow[i];
-                auto lvaluesPart = std::vector<double>(lvalues.begin() + lrow[i], lvalues.begin() + lrow[i] + lElementsInRow);
-                auto lRowPart = std::vector<size_t>{0, lElementsInRow};
-                auto lColPart = std::vector<size_t>(lcol.begin() + lrow[i], lcol.begin() + lrow[i] + lElementsInRow);
-                SendMatrixPart(threadNum, lvaluesPart, lRowPart, lColPart);
-
-                const size_t rElementsInRow = rrow[i + 1] - rrow[i];
-                auto rvaluesPart = std::vector<double>(rvalues.begin() + rrow[i], rvalues.begin() + rrow[i] + rElementsInRow);
-                auto rRowPart = std::vector<size_t>{0, rElementsInRow};
-                auto rColPart = std::vector<size_t>(rcol.begin() + rrow[i], rcol.begin() + rrow[i] + rElementsInRow);
-                SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
-            }
-            auto resptr = std::make_shared<RowSparseMatrix>(left->GetRowSize(), left->GetColSize());
-            std::vector<double> values;
-            std::vector<size_t> rows(left->GetRowSize() + 1, 0);
-            std::vector<size_t> cols;
-            std::cout << "Data was send\n";
-            for (size_t i = 0; i < left->GetRowSize(); i++)
-            {
-                size_t threadNum = i % (size - 1) + 1;
-                const auto &[valuesPart, rowsPart, colsPart] = GetMatrixProfile(threadNum);
-                rows[i + 1] = rows[i] + rowsPart.back();
-                values.insert(values.end(), valuesPart.begin(), valuesPart.end());
-                cols.insert(cols.end(), colsPart.begin(), colsPart.end());
-            }
-            std::cout << "Data was collected\n";
-            resptr->LoadProfile(std::move(values), std::move(cols), std::move(rows));
-            return resptr;
+            rowSize = left->GetRowSize();
+            result = std::make_shared<RowSparseMatrix>(left->GetRowSize(), left->GetColSize());
+            rows.resize(left->GetRowSize() + 1);
         }
-        else
+        MPI_Bcast(&rowSize, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
+        for (size_t rowIndex = 0; rowIndex < rowSize; rowIndex += (size - 1))
         {
-            size_t colSize;
-            MPI_Status status;
-            int isLast = 0;
-            while (!isLast)
+            for (size_t threadNum = 1; threadNum < size; threadNum++)
             {
-                MPI_Recv(&colSize, 1, MPI_UNSIGNED_LONG, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                isLast = status.MPI_TAG;
-                const auto &[lvaluesPart, lRowPart, lColPart] = GetMatrixProfile(0);
-                const auto &[rvaluesPart, rRowPart, rColPart] = GetMatrixProfile(0);
-                RowSparseMatrix left(1, colSize);
-                left.LoadProfile(std::move(lvaluesPart), std::move(lColPart), std::move(lRowPart));
-                RowSparseMatrix right(1, colSize);
-                right.LoadProfile(std::move(rvaluesPart), std::move(rColPart), std::move(rRowPart));
-                auto result = left + right;
-                const auto &[values, col, row] = result.GetProfile();
-                SendMatrixPart(0, values, row, col);
+                if (rank == 0)
+                {
+                    size_t i = rowIndex + threadNum - 1;
+                    const auto &[lvalues, lcol, lrow] = left->GetProfile();
+                    const auto &[rvalues, rcol, rrow] = right->GetProfile();
+                    size_t colSize = left->GetColSize();
+                    MPI_Send(&colSize, 1, MPI_UNSIGNED_LONG, threadNum, 0, MPI_COMM_WORLD);
+                    const size_t lElementsInRow = lrow[i + 1] - lrow[i];
+                    auto lvaluesPart = std::vector<double>(lvalues.begin() + lrow[i], lvalues.begin() + lrow[i] + lElementsInRow);
+                    auto lRowPart = std::vector<size_t>{0, lElementsInRow};
+                    auto lColPart = std::vector<size_t>(lcol.begin() + lrow[i], lcol.begin() + lrow[i] + lElementsInRow);
+                    SendMatrixPart(threadNum, lvaluesPart, lRowPart, lColPart);
+
+                    const size_t rElementsInRow = rrow[i + 1] - rrow[i];
+                    auto rvaluesPart = std::vector<double>(rvalues.begin() + rrow[i], rvalues.begin() + rrow[i] + rElementsInRow);
+                    auto rRowPart = std::vector<size_t>{0, rElementsInRow};
+                    auto rColPart = std::vector<size_t>(rcol.begin() + rrow[i], rcol.begin() + rrow[i] + rElementsInRow);
+                    SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
+                }
+                if (threadNum == rank)
+                {
+                    size_t colSize;
+                    MPI_Status status;
+                    MPI_Recv(&colSize, 1, MPI_UNSIGNED_LONG, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                    const auto &[lvaluesPart, lRowPart, lColPart] = GetMatrixProfile(0);
+                    const auto &[rvaluesPart, rRowPart, rColPart] = GetMatrixProfile(0);
+                    RowSparseMatrix left(1, colSize);
+                    left.LoadProfile(std::move(lvaluesPart), std::move(lColPart), std::move(lRowPart));
+                    RowSparseMatrix right(1, colSize);
+                    right.LoadProfile(std::move(rvaluesPart), std::move(rColPart), std::move(rRowPart));
+                    auto result = left + right;
+                    const auto &[values, col, row] = result.GetProfile();
+                    SendMatrixPart(0, values, row, col);
+                }
+            }
+            std::cout << "Data was send\n";
+            if (rank == 0)
+            {
+                for (size_t threadNum = 1; threadNum < size; threadNum++)
+                {
+                    size_t i = rowIndex + threadNum - 1;
+                    const auto &[valuesPart, rowsPart, colsPart] = GetMatrixProfile(threadNum);
+                    rows[i + 1] = rows[i] + rowsPart.back();
+                    values.insert(values.end(), valuesPart.begin(), valuesPart.end());
+                    cols.insert(cols.end(), colsPart.begin(), colsPart.end());
+                }
+                std::cout << "Data was collected\n";
             }
         }
-        return nullptr;
+        if (rank == 0)
+        {
+            result->LoadProfile(std::move(values), std::move(cols), std::move(rows));
+        }
+        return result;
     }
 
     RowSparseMatrixPtr MPITools::MultRowSparseMatrices(const RowSparseMatrixPtr &left, const RowSparseMatrixPtr &right)
@@ -126,94 +139,109 @@ namespace Paraprog::MatrixLib
         int rank, size;
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        size_t maxCount;
+        size_t rowSize;
+        size_t colSize;
+        RowSparseMatrixPtr result = nullptr;
+        std::vector<double> values;
+        std::vector<size_t> rows;
+        std::vector<size_t> cols;
         if (rank == 0)
         {
             if (left->GetRowSize() != right->GetRowSize() || left->GetColSize() != right->GetColSize())
             {
                 return nullptr;
             }
-
-            const auto &[lvalues, lcol, lrow] = left->GetProfile();
-            const auto &[rvalues, rcol, rrow] = right->GetProfile();
-            for (size_t i = 0; i < left->GetRowSize(); i++)
+            rowSize = left->GetRowSize();
+            colSize = right->GetColSize();
+            result = std::make_shared<RowSparseMatrix>(left->GetRowSize(), right->GetColSize());
+            rows.resize(left->GetRowSize() + 1);
+        }
+        MPI_Bcast(&rowSize, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&colSize, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
+        for (size_t rowIndex = 0; rowIndex < rowSize; rowIndex++)
+        {
+            size_t nonZeroElementsCount = 0;
+            for (size_t colIndex = 0; colIndex < colSize; colIndex += (size - 1))
             {
-                size_t colSize = right->GetColSize();
-                size_t threadNum = i % (size - 1) + 1;
-                const size_t lElementsInRow = lrow[i + 1] - lrow[i];
-                auto lvaluesPart = std::vector<double>(lvalues.begin() + lrow[i], lvalues.begin() + lrow[i] + lElementsInRow);
-                auto lRowPart = std::vector<size_t>{0, lElementsInRow};
-                auto lColPart = std::vector<size_t>(lcol.begin() + lrow[i], lcol.begin() + lrow[i] + lElementsInRow);
-                for (size_t j = 0; j < right->GetColSize(); j++)
+                for (size_t threadNum = 1; threadNum < size; threadNum++)
                 {
-                    MPI_Send(&colSize, 1, MPI_UNSIGNED_LONG, threadNum, (i * size) >= left->GetRowSize() && j + 1 == right->GetColSize(), MPI_COMM_WORLD);
-                    SendMatrixPart(threadNum, lvaluesPart, lRowPart, lColPart);
-                    auto rvaluesPart = std::vector<double>();
-                    auto rRowPart = std::vector<size_t>{0};
-                    auto rColPart = std::vector<size_t>();
-                    for (size_t l = 0; l < right->GetRowSize(); l++)
+                    if (rank == 0)
                     {
-                        for (size_t k = rrow[l]; k < rrow[l + 1]; k++)
+                        size_t j = colIndex + threadNum - 1;
+                        const auto &[lvalues, lcol, lrow] = left->GetProfile();
+                        const auto &[rvalues, rcol, rrow] = right->GetProfile();
+                        size_t lcolSize = left->GetColSize();
+                        MPI_Send(&lcolSize, 1, MPI_UNSIGNED_LONG, threadNum, 0, MPI_COMM_WORLD);
+                        const size_t lElementsInRow = lrow[rowIndex + 1] - lrow[rowIndex];
+                        auto lvaluesPart = std::vector<double>(lvalues.begin() + lrow[rowIndex], lvalues.begin() + lrow[rowIndex] + lElementsInRow);
+                        auto lRowPart = std::vector<size_t>{0, lElementsInRow};
+                        auto lColPart = std::vector<size_t>(lcol.begin() + lrow[rowIndex], lcol.begin() + lrow[rowIndex] + lElementsInRow);
+                        SendMatrixPart(threadNum, lvaluesPart, lRowPart, lColPart);
+                        auto rvaluesPart = std::vector<double>();
+                        auto rRowPart = std::vector<size_t>(lcolSize + 1, 0);
+                        auto rColPart = std::vector<size_t>();
+                        for (size_t l = 0; l < lcolSize; l++)
                         {
-                            if (rcol[k] == j)
+                            for (size_t k = rrow[l]; k < rrow[l + 1]; k++)
                             {
-                                rvaluesPart.push_back(rvalues[k]);
-                                rRowPart.push_back(rRowPart[l] + 1);
-                                rColPart.push_back(j);
-                                break;
+                                if (rcol[k] == j)
+                                {
+                                    rvaluesPart.push_back(rvalues[k]);
+                                    rRowPart[l + 1] = rRowPart[l] + 1;
+                                    rColPart.push_back(0);
+                                    break;
+                                }
                             }
                         }
+                        SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
                     }
-
-                    SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
-                }
-            }
-            auto resptr = std::make_shared<RowSparseMatrix>(left->GetRowSize(), left->GetColSize());
-            std::vector<double> values;
-            std::vector<size_t> rows(left->GetRowSize() + 1, 0);
-            std::vector<size_t> cols;
-            std::cout << "Data was send\n";
-            for (size_t i = 0; i < left->GetRowSize(); i++)
-            {
-                size_t threadNum = i % (size - 1) + 1;
-                size_t nonZeroElementsCount = 0;
-                for (size_t j = 0; j < right->GetColSize(); j++)
-                {
-                    const auto &[valuesPart, rowsPart, colsPart] = GetMatrixProfile(threadNum);
-                    auto val = valuesPart.front();
-                    if (std::abs(val) < std::numeric_limits<decltype(val)>::epsilon())
+                    if (threadNum == rank)
                     {
-                        continue;
+                        size_t lcolSize;
+                        MPI_Status status;
+                        MPI_Recv(&lcolSize, 1, MPI_UNSIGNED_LONG, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                        const auto &[lvaluesPart, lRowPart, lColPart] = GetMatrixProfile(0);
+                        const auto &[rvaluesPart, rRowPart, rColPart] = GetMatrixProfile(0);
+                        RowSparseMatrix left(1, lcolSize);
+                        left.LoadProfile(std::move(lvaluesPart), std::move(lColPart), std::move(lRowPart));
+                        RowSparseMatrix right(lcolSize, 1);
+                        right.LoadProfile(std::move(rvaluesPart), std::move(rColPart), std::move(rRowPart));
+                        auto result = left * right;
+                        const auto &[values, col, row] = result.GetProfile();
+                        SendMatrixPart(0, values, row, col);
                     }
-                    values.push_back(val);
-                    nonZeroElementsCount++;
-                    cols.push_back(j);
                 }
-                rows[i + 1] = rows[i] + nonZeroElementsCount;
+                std::cout << "Data was send\n";
+                if (rank == 0)
+                {
+                    for (size_t threadNum = 1; threadNum < size; threadNum++)
+                    {
+                        size_t j = colIndex + threadNum - 1;
+                        const auto &[valuesPart, rowsPart, colsPart] = GetMatrixProfile(threadNum);
+                        auto val = (valuesPart.empty()) ? 0.0 : valuesPart.front();
+                        if (std::abs(val) < std::numeric_limits<decltype(val)>::epsilon())
+                        {
+                            continue;
+                        }
+                        nonZeroElementsCount++;
+                        values.push_back(val);
+                        cols.push_back(j);
+                    }
+                    std::cout << "Data was collected\n";
+                }
             }
-            std::cout << "Data was collected\n";
-            resptr->LoadProfile(std::move(values), std::move(cols), std::move(rows));
-            return resptr;
-        }
-        else
-        {
-            size_t colSize;
-            MPI_Status status;
-            int isLast = 0;
-            while (!isLast)
+            if (rank == 0)
             {
-                MPI_Recv(&colSize, 1, MPI_UNSIGNED_LONG, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                isLast = status.MPI_TAG;
-                const auto &[lvaluesPart, lRowPart, lColPart] = GetMatrixProfile(0);
-                const auto &[rvaluesPart, rRowPart, rColPart] = GetMatrixProfile(0);
-                RowSparseMatrix left(1, colSize);
-                left.LoadProfile(std::move(lvaluesPart), std::move(lColPart), std::move(lRowPart));
-                RowSparseMatrix right(1, colSize);
-                right.LoadProfile(std::move(rvaluesPart), std::move(rColPart), std::move(rRowPart));
-                auto result = left * right;
-                const auto &[values, col, row] = result.GetProfile();
-                SendMatrixPart(0, values, row, col);
+                rows[rowIndex + 1] = rows[rowIndex] + nonZeroElementsCount;
             }
         }
-        return nullptr;
+        if (rank == 0)
+        {
+            result->LoadProfile(std::move(values), std::move(cols), std::move(rows));
+        }
+        return result;
     }
 }
