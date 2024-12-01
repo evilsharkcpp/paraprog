@@ -26,6 +26,13 @@ namespace Paraprog::MatrixLib
         MPI_Send(pack, bufPos, MPI_BYTE, threadNum, 1, MPI_COMM_WORLD);
     }
 
+    static void SendAll(const size_t root, std::vector<double> &value, std::vector<size_t> &row, std::vector<size_t> &col)
+    {
+        MPI_Bcast(value.data(), value.size(), MPI_DOUBLE, root, MPI_COMM_WORLD);
+        MPI_Bcast(row.data(), row.size(), MPI_UNSIGNED_LONG, root, MPI_COMM_WORLD);
+        MPI_Bcast(col.data(), col.size(), MPI_UNSIGNED_LONG, root, MPI_COMM_WORLD);
+    }
+
     static std::tuple<const std::vector<double>, const std::vector<size_t>, const std::vector<size_t>> GetMatrixProfile(const size_t source)
     {
         size_t vSize;
@@ -156,6 +163,7 @@ namespace Paraprog::MatrixLib
         std::vector<double> values;
         std::vector<size_t> rows;
         std::vector<size_t> cols;
+
         if (rank == 0)
         {
             if (left->GetRowSize() != right->GetRowSize() || left->GetColSize() != right->GetColSize())
@@ -176,26 +184,33 @@ namespace Paraprog::MatrixLib
         {
             size_t nonZeroElementsCount = 0;
             RowSparseMatrixPtr block;
-            RowSparseMatrixPtr columnBlock;
-            for (size_t threadNum = 1; threadNum < size; threadNum++)
+            std::vector<double> lvaluesPart;
+            std::vector<size_t> lRowPart;
+            std::vector<size_t> lColPart;
+            size_t s1, s2, s3;
+            if (rank == 0)
             {
-                if (rank == 0)
-                {
-                    const auto &[lvalues, lcol, lrow] = left->GetProfile();
-                    const size_t lElementsInRow = lrow[rowIndex + 1] - lrow[rowIndex];
-                    auto lvaluesPart = std::vector<double>(lvalues.begin() + lrow[rowIndex], lvalues.begin() + lrow[rowIndex] + lElementsInRow);
-                    auto lRowPart = std::vector<size_t>{0, lElementsInRow};
-                    auto lColPart = std::vector<size_t>(lcol.begin() + lrow[rowIndex], lcol.begin() + lrow[rowIndex] + lElementsInRow);
-                    SendMatrixPart(threadNum, lvaluesPart, lRowPart, lColPart);
-                }
-                if (threadNum == rank)
-                {
-                    MPI_Status status;
-                    const auto &[lvaluesPart, lRowPart, lColPart] = GetMatrixProfile(0);
-                    block = std::make_shared<RowSparseMatrix>(1, leftColSize);
-                    block->LoadProfile(lvaluesPart, lColPart, lColPart);
-                }
+                const auto &[lvalues, lcol, lrow] = left->GetProfile();
+                const size_t lElementsInRow = lrow[rowIndex + 1] - lrow[rowIndex];
+                lvaluesPart = std::vector<double>(lvalues.begin() + lrow[rowIndex], lvalues.begin() + lrow[rowIndex] + lElementsInRow);
+                lRowPart = std::vector<size_t>{0, lElementsInRow};
+                lColPart = std::vector<size_t>(lcol.begin() + lrow[rowIndex], lcol.begin() + lrow[rowIndex] + lElementsInRow);
+                s1 = lvaluesPart.size();
+                s2 = lRowPart.size();
+                s3 = lColPart.size();
             }
+            MPI_Bcast(&s1, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&s2, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&s3, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+            if (rank != 0)
+            {
+                lvaluesPart.resize(s1);
+                lRowPart.resize(s2);
+                lColPart.resize(s3);
+            }
+            SendAll(0, lvaluesPart, lRowPart, lColPart);
+            block = std::make_shared<RowSparseMatrix>(1, leftColSize);
+            block->LoadProfile(lvaluesPart, lColPart, lRowPart);
             for (size_t colIndex = 0; colIndex < colSize; colIndex += (size - 1))
             {
                 for (size_t threadNum = 1; threadNum < size; threadNum++)
@@ -209,11 +224,11 @@ namespace Paraprog::MatrixLib
                         }
                         const auto &[rvalues, rcol, rrow] = right->GetProfile();
                         auto rvaluesPart = std::vector<double>();
-                        size_t lcolSize = left->GetColSize();
-                        auto rRowPart = std::vector<size_t>(lcolSize + 1, 0);
+                        auto rRowPart = std::vector<size_t>(leftColSize + 1, 0);
                         auto rColPart = std::vector<size_t>();
-                        for (size_t l = 0; l < lcolSize; l++)
+                        for (size_t l = 0; l < leftColSize; l++)
                         {
+                            bool isAdded = false;
                             for (size_t k = rrow[l]; k < rrow[l + 1]; k++)
                             {
                                 if (rcol[k] == j)
@@ -221,8 +236,13 @@ namespace Paraprog::MatrixLib
                                     rvaluesPart.push_back(rvalues[k]);
                                     rRowPart[l + 1] = rRowPart[l] + 1;
                                     rColPart.push_back(0);
+                                    isAdded = true;
                                     break;
                                 }
+                            }
+                            if (!isAdded)
+                            {
+                                rRowPart[l + 1] = rRowPart[l];
                             }
                         }
                         SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
