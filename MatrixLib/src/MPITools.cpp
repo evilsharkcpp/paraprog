@@ -258,9 +258,9 @@ namespace Paraprog::MatrixLib
                         SendMatrixPart(0, values, row, col);
                     }
                 }
-                // std::cout << "Data was send\n";
                 if (rank == 0)
                 {
+                    // std::cout << "Data was send\n";
                     for (size_t threadNum = 1; threadNum < size; threadNum++)
                     {
                         size_t j = colIndex + threadNum - 1;

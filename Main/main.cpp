@@ -18,7 +18,7 @@ int main(int argc, char **argv)
     int rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (argc != 5)
+    if (argc < 5 || argc > 6)
     {
         if (rank == 0)
         {
@@ -28,6 +28,11 @@ int main(int argc, char **argv)
     }
     if (size > 1)
     {
+        bool isSave = true;
+        if (argc == 6)
+        {
+            isSave = std::stoi(argv[5]);
+        }
         RowSparseMatrixPtr left;
         RowSparseMatrixPtr right;
         if (rank == 0)
@@ -65,13 +70,21 @@ int main(int argc, char **argv)
         if (rank == 0 && res != nullptr)
         {
             std::cout << "Time: " << std::fixed << std::setprecision(3) << end - begin << "s" << std::endl;
-            res->SaveMatrix(argv[4]);
+            if (isSave)
+            {
+                res->SaveMatrix(argv[4]);
+            }
         }
     }
     else
     {
         auto left = RowSparseMatrix::LoadMatrix(argv[1]);
         auto right = RowSparseMatrix::LoadMatrix(argv[2]);
+        bool isSave = true;
+        if (argc == 6)
+        {
+            isSave = std::stoi(argv[5]);
+        }
         auto begin = std::chrono::high_resolution_clock::now();
         RowSparseMatrixPtr res;
         if (std::string(argv[3]) == "add")
@@ -88,7 +101,10 @@ int main(int argc, char **argv)
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "Time: " << std::fixed << std::setprecision(5) << std::chrono::duration<double>(end - begin).count() << "s" << std::endl;
-        res->SaveMatrix(argv[4]);
+        if (isSave)
+        {
+            res->SaveMatrix(argv[4]);
+        }
     }
     return 0;
 }
