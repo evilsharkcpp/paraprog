@@ -15,6 +15,7 @@ endif()
 if(MPI_FOUND)
     set(MPI_C_COMPILER "/usr/share/mvapich/bin/mpicc")
     add_compile_definitions("USE_MPI")
+    add_compile_options("-O3")
 endif()
 
 add_subdirectory(MatrixLib)
