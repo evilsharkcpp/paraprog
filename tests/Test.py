@@ -9,7 +9,7 @@ def main():
     rvs = sp.stats.poisson(25, loc=10).rvs
     n = 0
     if len(sys.argv) > 1:
-        n = sys.argv[1]
+        n = int(sys.argv[1])
     else:
         n = np.randomint(1, 50000)
     S = sp.sparse.random(n, n, density=0.75, random_state=rng, data_rvs=rvs)

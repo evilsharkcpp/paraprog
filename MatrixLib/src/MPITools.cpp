@@ -81,6 +81,10 @@ namespace Paraprog::MatrixLib
                 if (rank == 0)
                 {
                     size_t i = rowIndex + threadNum - 1;
+                    if (i >= rowSize)
+                    {
+                        break;
+                    }
                     const auto &[lvalues, lcol, lrow] = left->GetProfile();
                     const auto &[rvalues, rcol, rrow] = right->GetProfile();
                     size_t colSize = left->GetColSize();
@@ -97,7 +101,7 @@ namespace Paraprog::MatrixLib
                     auto rColPart = std::vector<size_t>(rcol.begin() + rrow[i], rcol.begin() + rrow[i] + rElementsInRow);
                     SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
                 }
-                if (threadNum == rank)
+                if (threadNum == rank && rowIndex + rank - 1 < rowSize)
                 {
                     size_t colSize;
                     MPI_Status status;
@@ -119,6 +123,10 @@ namespace Paraprog::MatrixLib
                 for (size_t threadNum = 1; threadNum < size; threadNum++)
                 {
                     size_t i = rowIndex + threadNum - 1;
+                    if (i >= rowSize)
+                    {
+                        break;
+                    }
                     const auto &[valuesPart, rowsPart, colsPart] = GetMatrixProfile(threadNum);
                     rows[i + 1] = rows[i] + rowsPart.back();
                     values.insert(values.end(), valuesPart.begin(), valuesPart.end());
@@ -171,6 +179,10 @@ namespace Paraprog::MatrixLib
                     if (rank == 0)
                     {
                         size_t j = colIndex + threadNum - 1;
+                        if (j >= colSize)
+                        {
+                            break;
+                        }
                         const auto &[lvalues, lcol, lrow] = left->GetProfile();
                         const auto &[rvalues, rcol, rrow] = right->GetProfile();
                         size_t lcolSize = left->GetColSize();
@@ -198,7 +210,7 @@ namespace Paraprog::MatrixLib
                         }
                         SendMatrixPart(threadNum, rvaluesPart, rRowPart, rColPart);
                     }
-                    if (threadNum == rank)
+                    if (threadNum == rank && rank + colIndex - 1 < colSize)
                     {
                         size_t lcolSize;
                         MPI_Status status;
@@ -220,6 +232,10 @@ namespace Paraprog::MatrixLib
                     for (size_t threadNum = 1; threadNum < size; threadNum++)
                     {
                         size_t j = colIndex + threadNum - 1;
+                        if (j >= colSize)
+                        {
+                            break;
+                        }
                         const auto &[valuesPart, rowsPart, colsPart] = GetMatrixProfile(threadNum);
                         auto val = (valuesPart.empty()) ? 0.0 : valuesPart.front();
                         if (std::abs(val) < std::numeric_limits<decltype(val)>::epsilon())

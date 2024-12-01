@@ -11,14 +11,20 @@ def main():
     f2 = open(data)
     sizes1 = f1.readline()
     sizes2 = f2.readline()
-    rows1, rows2 = np.array(f1.readline()), np.array(f2.readline())
-    data1, data2 = np.array(f1.readline()), np.array(f2.readline())
-    cols1, cols2 = np.array(f1.readline()), np.array(f2.readline())
+    rows1, rows2 = np.array(
+        list(f1.readline().strip().split(" ")), dtype=int
+    ), np.array(list(f2.readline().strip().split(" ")), dtype=int)
+    data1, data2 = np.array(
+        list(f1.readline().strip().split(" ")), dtype=float
+    ), np.array(list(f2.readline().strip().split(" ")), dtype=float)
+    cols1, cols2 = np.array(
+        list(f1.readline().strip().split(" ")), dtype=int
+    ), np.array(list(f2.readline().strip().split(" ")), dtype=int)
     f1.close()
     f2.close()
-    A1 = csr_matrix((data1), (rows1, cols1))
-    A2 = csr_matrix((data2), (rows2, cols2))
-    assert np.allclose(A1, A2)
+    A1 = csr_matrix((data1, cols1, rows1))
+    A2 = csr_matrix((data2, cols2, rows2))
+    assert (A1 != A2).nnz == 0
 
 
 if __name__ == "__main__":
