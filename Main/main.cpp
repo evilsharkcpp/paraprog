@@ -72,13 +72,22 @@ int main(int argc, char **argv)
     {
         auto left = RowSparseMatrix::LoadMatrix(argv[1]);
         auto right = RowSparseMatrix::LoadMatrix(argv[2]);
-        std::cout << left->GetPrettyMatrix() << std::endl;
-        std::cout << right->GetPrettyMatrix() << std::endl;
         auto begin = std::chrono::high_resolution_clock::now();
-        auto res = *left * *right;
+        RowSparseMatrixPtr res;
+        if (std::string(argv[3]) == "add")
+        {
+            res = std::make_shared<RowSparseMatrix>(*left + *right);
+        }
+        else if (std::string(argv[3]) == "mult")
+        {
+            res = std::make_shared<RowSparseMatrix>(*left * *right);
+        }
+        else
+        {
+            return -1;
+        }
         auto end = std::chrono::high_resolution_clock::now();
-        res.SaveMatrix(argv[4]);
-        std::cout << res.GetPrettyMatrix() << std::endl;
+        res->SaveMatrix(argv[4]);
         std::cout << "Time: " << std::fixed << std::setprecision(5) << std::chrono::duration<double>(end - begin).count() << "s" << std::endl;
     }
     return 0;
