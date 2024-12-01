@@ -71,7 +71,7 @@ namespace Paraprog::MatrixLib
     RowSparseMatrix RowSparseMatrix::operator*(const RowSparseMatrix &right) const
     {
         RowSparseMatrix result(m_rowSize, right.m_colSize);
-        result.m_rowIndexes.push_back(0);
+        result.m_rowIndexes.resize(m_rowSize + 1);
         for (size_t i = 0; i < m_rowSize; i++)
         {
             size_t nonZeroElementsCount = 0;
@@ -96,7 +96,7 @@ namespace Paraprog::MatrixLib
                 result.m_values.push_back(value);
                 result.m_colIndexes.push_back(j);
             }
-            result.m_rowIndexes.push_back(result.m_rowIndexes[i] + nonZeroElementsCount);
+            result.m_rowIndexes[i + 1] = result.m_rowIndexes[i] + nonZeroElementsCount;
         }
         return result;
     }
@@ -271,19 +271,19 @@ namespace Paraprog::MatrixLib
             return;
         }
         out << m_rowSize << " " << m_colSize << std::endl;
-        for (size_t i = 0; i < m_rowSize + 1; i++)
+        for (size_t i = 0; i < m_rowIndexes.size(); i++)
         {
-            out << m_rowIndexes[i];
+            out << m_rowIndexes[i] << " ";
         }
         out << std::endl;
-        for (size_t i = 0; i < m_rowIndexes.back(); i++)
+        for (size_t i = 0; i < m_values.size(); i++)
         {
-            out << m_values[i];
+            out << m_values[i] << " ";
         }
         out << std::endl;
-        for (size_t i = 0; i < m_rowIndexes.back(); i++)
+        for (size_t i = 0; i < m_colIndexes.size(); i++)
         {
-            out << m_colIndexes[i];
+            out << m_colIndexes[i] << " ";
         }
     }
 } // namespace Paraprog::MatrixLib
