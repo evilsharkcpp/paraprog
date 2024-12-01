@@ -117,7 +117,7 @@ namespace Paraprog::MatrixLib
                     SendMatrixPart(0, values, row, col);
                 }
             }
-            std::cout << "Data was send\n";
+            // std::cout << "Data was send\n";
             if (rank == 0)
             {
                 for (size_t threadNum = 1; threadNum < size; threadNum++)
@@ -132,7 +132,7 @@ namespace Paraprog::MatrixLib
                     values.insert(values.end(), valuesPart.begin(), valuesPart.end());
                     cols.insert(cols.end(), colsPart.begin(), colsPart.end());
                 }
-                std::cout << "Data was collected\n";
+                // std::cout << "Data was collected\n";
             }
         }
         if (rank == 0)
@@ -226,7 +226,7 @@ namespace Paraprog::MatrixLib
                         SendMatrixPart(0, values, row, col);
                     }
                 }
-                std::cout << "Data was send\n";
+                // std::cout << "Data was send\n";
                 if (rank == 0)
                 {
                     for (size_t threadNum = 1; threadNum < size; threadNum++)
@@ -246,7 +246,7 @@ namespace Paraprog::MatrixLib
                         values.push_back(val);
                         cols.push_back(j);
                     }
-                    std::cout << "Data was collected\n";
+                    // std::cout << "Data was collected\n";
                 }
             }
             if (rank == 0)
