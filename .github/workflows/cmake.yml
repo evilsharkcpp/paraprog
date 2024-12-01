@@ -35,12 +35,21 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Test
+    - name: TestMPI
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 2
+        python3 ../tests/Test.py 500
         mpiexec -n 4 ./Main/Main left.txt right.txt add result_sum.txt
         mpiexec -n 4 ./Main/Main left.txt right.txt mult result_mult.txt
+        python3 ../tests/Validate.py sum.txt result_sum.txt
+        python3 ../tests/Validate.py mult.txt result_mult.txt
+
+    - name: TestOneThread
+      working-directory: ${{github.workspace}}/build
+      run: |
+        python3 ../tests/Test.py 500
+        ./Main/Main left.txt right.txt add result_sum.txt
+        ./Main/Main left.txt right.txt mult result_mult.txt
         python3 ../tests/Validate.py sum.txt result_sum.txt
         python3 ../tests/Validate.py mult.txt result_mult.txt
 
