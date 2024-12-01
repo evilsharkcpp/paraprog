@@ -14,6 +14,8 @@ def main():
     rows1, rows2 = np.array(f1.readline()), np.array(f2.readline())
     data1, data2 = np.array(f1.readline()), np.array(f2.readline())
     cols1, cols2 = np.array(f1.readline()), np.array(f2.readline())
+    f1.close()
+    f2.close()
     A1 = csr_matrix((data1), (rows1, cols1))
     A2 = csr_matrix((data2), (rows2, cols2))
     assert np.allclose(A1, A2)

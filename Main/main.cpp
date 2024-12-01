@@ -34,15 +34,20 @@ int main(int argc, char **argv)
         {
             left = RowSparseMatrix::LoadMatrix(argv[1]);
             right = RowSparseMatrix::LoadMatrix(argv[2]);
+            if (left == nullptr || right == nullptr)
+            {
+                std::cout << "Not found input files" << std::endl;
+                return -1;
+            }
         }
         MPI_Barrier(MPI_COMM_WORLD);
         auto begin = MPI_Wtime();
         RowSparseMatrixPtr res;
-        if (argv[3] == "add")
+        if (std::string(argv[3]) == "add")
         {
             res = MPITools::AddRowSparseMatrices(left, right);
         }
-        else if (argv[3] == "mult")
+        else if (std::string(argv[3]) == "mult")
         {
             res = MPITools::MultRowSparseMatrices(left, right);
         }
