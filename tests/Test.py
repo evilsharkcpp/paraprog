@@ -12,9 +12,9 @@ def main():
         n = int(sys.argv[1])
     else:
         n = np.randomint(1, 50000)
-    S = sp.sparse.random(n, n, density=0.75, random_state=rng, data_rvs=rvs)
+    S = sp.sparse.random(n, n, density=0.30, random_state=rng, data_rvs=rvs)
     t1 = csr_matrix(S)
-    S = sp.sparse.random(n, n, density=0.75, random_state=rng, data_rvs=rvs)
+    S = sp.sparse.random(n, n, density=0.30, random_state=rng, data_rvs=rvs)
     t2 = csr_matrix(S)
 
     o1 = open("left.txt", "w")
