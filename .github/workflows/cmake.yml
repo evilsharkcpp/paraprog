@@ -38,28 +38,28 @@ jobs:
     - name: TestMPI_Sum
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 500
-        mpiexec -n 6 ./Main/Main left.txt right.txt add result_sum.txt
+        python3 ../tests/Test.py 1000
+        mpiexec -n 3 ./Main/Main left.txt right.txt add result_sum.txt
         python3 ../tests/Validate.py sum.txt result_sum.txt
     
     - name: TestMPI_Mult
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 500
-        mpiexec -n 6 ./Main/Main left.txt right.txt mult result_mult.txt
+        python3 ../tests/Test.py 1000
+        mpiexec -n 3 ./Main/Main left.txt right.txt mult result_mult.txt
         python3 ../tests/Validate.py mult.txt result_mult.txt
 
     - name: TestOneThread_Sum
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 500
+        python3 ../tests/Test.py 1000
         ./Main/Main left.txt right.txt add result_sum.txt
         python3 ../tests/Validate.py sum.txt result_sum.txt
         
     - name: TestOneThread_Mult
       working-directory: ${{github.workspace}}/build
       run: |
-        python3 ../tests/Test.py 500
+        python3 ../tests/Test.py 1000
         ./Main/Main left.txt right.txt mult result_mult.txt
         python3 ../tests/Validate.py mult.txt result_mult.txt
 

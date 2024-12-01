@@ -64,8 +64,8 @@ int main(int argc, char **argv)
         MPI_Finalize();
         if (rank == 0 && res != nullptr)
         {
-            res->SaveMatrix(argv[4]);
             std::cout << "Time: " << std::fixed << std::setprecision(3) << end - begin << "s" << std::endl;
+            res->SaveMatrix(argv[4]);
         }
     }
     else
@@ -87,8 +87,8 @@ int main(int argc, char **argv)
             return -1;
         }
         auto end = std::chrono::high_resolution_clock::now();
-        res->SaveMatrix(argv[4]);
         std::cout << "Time: " << std::fixed << std::setprecision(5) << std::chrono::duration<double>(end - begin).count() << "s" << std::endl;
+        res->SaveMatrix(argv[4]);
     }
     return 0;
 }
