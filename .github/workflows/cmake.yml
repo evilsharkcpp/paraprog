@@ -22,7 +22,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install MPI
-      run: sudo apt install mpich
+      run: |
+        sudo apt install mpich python3 pip
+        pip install scipy
+        pip install np
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
@@ -34,7 +37,11 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      # Execute tests defined by the CMake configuration.
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest -C ${{env.BUILD_TYPE}}
+      run: |
+        python3 ../tests/Test.py 2
+        mpiexec -n 4 ./Main/Main left.txt right.txt add result_sum.txt
+        mpiexec -n 4 ./Main/Main left.txt right.txt mult result_mult.txt
+        python3 ../tests/Validate.py sum.txt result_sum.txt
+        python3 ../tests/Validate.py mult.txt result_mult.txt
+
 
